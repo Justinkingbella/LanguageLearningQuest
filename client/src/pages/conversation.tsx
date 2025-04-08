@@ -139,7 +139,7 @@ export default function ConversationPage() {
     
     const currentDialogue = dialogues[currentMessage];
     
-    if (currentDialogue.speakerRole === 'native_speaker') {
+    if (currentDialogue.speakerRole === 'native_speaker' || currentDialogue.speakerRole === 'local') {
       // If the current message is from the native speaker, just proceed to the next one
       goToNextMessage();
       return;
@@ -248,14 +248,14 @@ export default function ConversationPage() {
         <div className="flex-grow flex items-center justify-center">
           <p>Loading conversation...</p>
         </div>
-        <BottomNavigation />
+        {/* No bottom navigation needed in the loading state since we'll use App.tsx layout */}
       </div>
     );
   }
   
   // Get the current dialogue message
   const currentDialogue = dialogues[currentMessage];
-  const isNativeSpeaker = currentDialogue.speakerRole === 'native_speaker';
+  const isNativeSpeaker = currentDialogue.speakerRole === 'local';
   const isUserTurn = currentDialogue.speakerRole === 'user';
   
   // Calculate progress
