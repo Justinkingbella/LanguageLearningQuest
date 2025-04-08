@@ -21,21 +21,36 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
 import { cn } from "@/lib/utils";
 
+// Create wrapper components that always return an element
+const HomePageWrapper = () => <HomePage />;
+const VocabularyPageWrapper = () => <VocabularyPage />;
+const QuizPageWrapper = () => <QuizPage />;
+const ResultsPageWrapper = () => <ResultsPage />;
+const DictionaryPageWrapper = () => <DictionaryPage />;
+const ConversationsPageWrapper = () => <ConversationsPage />;
+const ConversationPageWrapper = () => <ConversationPage />;
+const CertificatePageWrapper = () => <CertificatePage />;
+const ProfilePageWrapper = () => <ProfilePage />;
+
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/lessons/:id/vocabulary" component={VocabularyPage} />
-      <ProtectedRoute path="/lessons/:id/quiz" component={QuizPage} />
-      <ProtectedRoute path="/lessons/:id/results" component={ResultsPage} />
-      <ProtectedRoute path="/dictionary" component={DictionaryPage} />
-      <ProtectedRoute path="/conversations" component={ConversationsPage} />
-      <ProtectedRoute path="/conversations/:lessonId" component={ConversationsPage} />
-      <ProtectedRoute path="/conversation/:id" component={ConversationPage} />
-      <ProtectedRoute path="/certificate" component={CertificatePage} />
-      <ProtectedRoute path="/profile" component={ProfilePage} />
-      <Route path="/auth" component={AuthPage} />
-      <Route component={NotFound} />
+      <ProtectedRoute path="/" component={HomePageWrapper} />
+      <ProtectedRoute path="/lessons/:id/vocabulary" component={VocabularyPageWrapper} />
+      <ProtectedRoute path="/lessons/:id/quiz" component={QuizPageWrapper} />
+      <ProtectedRoute path="/lessons/:id/results" component={ResultsPageWrapper} />
+      <ProtectedRoute path="/dictionary" component={DictionaryPageWrapper} />
+      <ProtectedRoute path="/conversations" component={ConversationsPageWrapper} />
+      <ProtectedRoute path="/conversations/:lessonId" component={ConversationsPageWrapper} />
+      <ProtectedRoute path="/conversation/:id" component={ConversationPageWrapper} />
+      <ProtectedRoute path="/certificate" component={CertificatePageWrapper} />
+      <ProtectedRoute path="/profile" component={ProfilePageWrapper} />
+      <Route path="/auth">
+        <AuthPage />
+      </Route>
+      <Route path="/:rest*">
+        <NotFound />
+      </Route>
     </Switch>
   );
 }

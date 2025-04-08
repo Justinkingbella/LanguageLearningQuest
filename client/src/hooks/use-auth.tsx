@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await apiRequest("GET", "/api/user");
         return await res.json();
-      } catch (error) {
+      } catch (error: any) {
         // Return null on 401 Unauthorized, throw error otherwise
         if (error.status === 401) {
           return null;

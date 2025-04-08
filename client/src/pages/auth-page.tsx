@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,11 +50,12 @@ export default function AuthPage() {
   // Get current user
   const user = queryClient.getQueryData(["/api/user"]);
   
-  // If user is already logged in, redirect to home page
-  if (user) {
-    setLocation("/");
-    return null;
-  }
+  // Use useEffect to handle redirection if user is already logged in
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   // Login form
   const loginForm = useForm<LoginFormValues>({

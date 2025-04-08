@@ -35,7 +35,7 @@ export default function Certificate() {
         const response = await apiRequest("GET", `/api/users/${user.id}/certificate`);
         const data = await response.json();
         setCertificate(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching certificate:", error);
         if (error.status === 404) {
           setError("You haven't completed enough lessons to earn a certificate yet.");
@@ -163,7 +163,8 @@ export default function Certificate() {
         </CardFooter>
       </Card>
       
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print {
           body * {
             visibility: hidden;
@@ -180,7 +181,8 @@ export default function Certificate() {
             padding: 40px;
           }
         }
-      `}</style>
+        `
+      }} />
     </div>
   );
 }
