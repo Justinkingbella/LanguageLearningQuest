@@ -154,8 +154,6 @@ export default function DictionaryPage() {
           </Card>
         )}
       </main>
-
-      <BottomNavigation />
     </div>
   );
 }

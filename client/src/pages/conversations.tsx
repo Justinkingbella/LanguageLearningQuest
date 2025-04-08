@@ -101,13 +101,13 @@ export default function ConversationsPage() {
   // Apply filters based on the selected tab
   if (activeFilter !== "all") {
     filteredScenarios = filteredScenarios.filter(scenario => 
-      scenario.difficulty.toLowerCase() === activeFilter
+      scenario.difficulty && scenario.difficulty.toLowerCase() === activeFilter
     );
   }
   
   // Get the current lesson name
   const currentLesson = lessonId && lessons && Array.isArray(lessons)
-    ? lessons.find((lesson) => lesson.id === parseInt(lessonId))
+    ? lessons.find((lesson) => Number(lesson.id) === Number(lessonId))
     : null;
   
   // Function to find practice data for a scenario
@@ -190,8 +190,6 @@ export default function ConversationsPage() {
           </div>
         )}
       </main>
-      
-      <BottomNavigation />
     </div>
   );
 }

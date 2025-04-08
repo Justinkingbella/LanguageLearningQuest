@@ -409,8 +409,6 @@ export default function ConversationPage() {
         )}
       </main>
       
-      <BottomNavigation />
-      
       {/* Hint dialog */}
       <Dialog open={showHint} onOpenChange={setShowHint}>
         <DialogContent>
