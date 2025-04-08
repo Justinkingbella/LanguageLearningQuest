@@ -6,6 +6,8 @@ import {
   quizOptions, type QuizOption, type InsertQuizOption,
   userProgress, type UserProgress, type InsertUserProgress
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -38,185 +40,150 @@ export interface IStorage {
   createUserProgress(progress: InsertUserProgress): Promise<UserProgress>;
   updateUserProgress(id: number, progress: Partial<UserProgress>): Promise<UserProgress | undefined>;
   calculateUserProgressPercentage(userId: number): Promise<number>;
+  
+  // Database initialization
+  seedDatabase(): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private lessons: Map<number, Lesson>;
-  private vocabularies: Map<number, Vocabulary>;
-  private quizQuestions: Map<number, QuizQuestion>;
-  private quizOptions: Map<number, QuizOption>;
-  private userProgress: Map<number, UserProgress>;
-  
-  private currentUserId: number;
-  private currentLessonId: number;
-  private currentVocabularyId: number;
-  private currentQuizQuestionId: number;
-  private currentQuizOptionId: number;
-  private currentUserProgressId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.lessons = new Map();
-    this.vocabularies = new Map();
-    this.quizQuestions = new Map();
-    this.quizOptions = new Map();
-    this.userProgress = new Map();
-    
-    this.currentUserId = 1;
-    this.currentLessonId = 1;
-    this.currentVocabularyId = 1;
-    this.currentQuizQuestionId = 1;
-    this.currentQuizOptionId = 1;
-    this.currentUserProgressId = 1;
-    
-    // Initialize with sample data
-    this.initializeSampleData();
-  }
-
+export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
-
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
-
+  
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, level: 1, xp: 0 };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
   
   // Lesson operations
   async getLessons(): Promise<Lesson[]> {
-    return Array.from(this.lessons.values()).sort((a, b) => a.order - b.order);
+    return await db.select().from(lessons).orderBy(lessons.order);
   }
   
   async getLesson(id: number): Promise<Lesson | undefined> {
-    return this.lessons.get(id);
+    const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
+    return lesson;
   }
   
   async createLesson(insertLesson: InsertLesson): Promise<Lesson> {
-    const id = this.currentLessonId++;
-    const lesson: Lesson = { ...insertLesson, id };
-    this.lessons.set(id, lesson);
+    const [lesson] = await db.insert(lessons).values(insertLesson).returning();
     return lesson;
   }
   
   async updateLessonStatus(id: number, status: string): Promise<Lesson | undefined> {
-    const lesson = this.lessons.get(id);
-    if (!lesson) return undefined;
-    
-    const updatedLesson = { ...lesson, status };
-    this.lessons.set(id, updatedLesson);
-    return updatedLesson;
+    const [lesson] = await db.update(lessons)
+      .set({ status })
+      .where(eq(lessons.id, id))
+      .returning();
+    return lesson;
   }
   
   // Vocabulary operations
   async getVocabularyByLessonId(lessonId: number): Promise<Vocabulary[]> {
-    return Array.from(this.vocabularies.values())
-      .filter(vocab => vocab.lessonId === lessonId);
+    return await db.select().from(vocabulary).where(eq(vocabulary.lessonId, lessonId));
   }
   
   async getVocabulary(id: number): Promise<Vocabulary | undefined> {
-    return this.vocabularies.get(id);
+    const [vocab] = await db.select().from(vocabulary).where(eq(vocabulary.id, id));
+    return vocab;
   }
   
   async createVocabulary(insertVocabulary: InsertVocabulary): Promise<Vocabulary> {
-    const id = this.currentVocabularyId++;
-    const vocabulary: Vocabulary = { ...insertVocabulary, id };
-    this.vocabularies.set(id, vocabulary);
-    return vocabulary;
+    const [vocab] = await db.insert(vocabulary).values(insertVocabulary).returning();
+    return vocab;
   }
   
   // Quiz operations
   async getQuizQuestionsByLessonId(lessonId: number): Promise<QuizQuestion[]> {
-    return Array.from(this.quizQuestions.values())
-      .filter(question => question.lessonId === lessonId);
+    return await db.select().from(quizQuestions).where(eq(quizQuestions.lessonId, lessonId));
   }
   
   async getQuizQuestion(id: number): Promise<QuizQuestion | undefined> {
-    return this.quizQuestions.get(id);
+    const [question] = await db.select().from(quizQuestions).where(eq(quizQuestions.id, id));
+    return question;
   }
   
   async createQuizQuestion(insertQuestion: InsertQuizQuestion): Promise<QuizQuestion> {
-    const id = this.currentQuizQuestionId++;
-    const question: QuizQuestion = { ...insertQuestion, id };
-    this.quizQuestions.set(id, question);
+    const [question] = await db.insert(quizQuestions).values(insertQuestion).returning();
     return question;
   }
   
   async getQuizOptionsByQuestionId(questionId: number): Promise<QuizOption[]> {
-    return Array.from(this.quizOptions.values())
-      .filter(option => option.questionId === questionId);
+    return await db.select().from(quizOptions).where(eq(quizOptions.questionId, questionId));
   }
   
   async createQuizOption(insertOption: InsertQuizOption): Promise<QuizOption> {
-    const id = this.currentQuizOptionId++;
-    const option: QuizOption = { ...insertOption, id };
-    this.quizOptions.set(id, option);
+    const [option] = await db.insert(quizOptions).values(insertOption).returning();
     return option;
   }
   
   // Progress operations
   async getUserProgressByUserId(userId: number): Promise<UserProgress[]> {
-    return Array.from(this.userProgress.values())
-      .filter(progress => progress.userId === userId);
+    return await db.select().from(userProgress).where(eq(userProgress.userId, userId));
   }
   
   async getUserProgressByLessonId(userId: number, lessonId: number): Promise<UserProgress | undefined> {
-    return Array.from(this.userProgress.values())
-      .find(progress => progress.userId === userId && progress.lessonId === lessonId);
+    const [progress] = await db.select().from(userProgress)
+      .where(and(
+        eq(userProgress.userId, userId),
+        eq(userProgress.lessonId, lessonId)
+      ));
+    return progress;
   }
   
   async createUserProgress(insertProgress: InsertUserProgress): Promise<UserProgress> {
-    const id = this.currentUserProgressId++;
-    const progress: UserProgress = { ...insertProgress, id };
-    this.userProgress.set(id, progress);
+    const [progress] = await db.insert(userProgress).values(insertProgress).returning();
     return progress;
   }
   
   async updateUserProgress(id: number, partialProgress: Partial<UserProgress>): Promise<UserProgress | undefined> {
-    const progress = this.userProgress.get(id);
-    if (!progress) return undefined;
-    
-    const updatedProgress = { ...progress, ...partialProgress };
-    this.userProgress.set(id, updatedProgress);
-    return updatedProgress;
+    const [progress] = await db.update(userProgress)
+      .set(partialProgress)
+      .where(eq(userProgress.id, id))
+      .returning();
+    return progress;
   }
   
   async calculateUserProgressPercentage(userId: number): Promise<number> {
-    const totalLessons = this.lessons.size;
+    const allLessons = await this.getLessons();
+    const userProgressItems = await this.getUserProgressByUserId(userId);
+    
+    const completedLessons = userProgressItems.filter(progress => progress.completed).length;
+    const totalLessons = allLessons.length;
+    
     if (totalLessons === 0) return 0;
-    
-    const completedLessons = Array.from(this.userProgress.values())
-      .filter(progress => progress.userId === userId && progress.completed)
-      .length;
-    
     return Math.round((completedLessons / totalLessons) * 100);
   }
   
-  // Helper method to initialize sample data
-  private initializeSampleData() {
+  // Seed database with initial data
+  async seedDatabase(): Promise<void> {
+    // Check if we already have users
+    const existingUsers = await db.select({ count: users.id }).from(users);
+    if (existingUsers.length > 0 && existingUsers[0].count > 0) {
+      console.log("Database already has data, skipping seed");
+      return;
+    }
+    
+    console.log("Seeding database with initial data...");
+    
     // Create a demo user
-    const user: User = {
-      id: this.currentUserId++,
+    const [user] = await db.insert(users).values({
       username: "demo",
       password: "demo123",
       displayName: "Maria",
       level: 3,
       xp: 250
-    };
-    this.users.set(user.id, user);
+    }).returning();
     
     // Create lessons
-    const basicGreetings: Lesson = {
-      id: this.currentLessonId++,
+    const [basicGreetings] = await db.insert(lessons).values({
       title: "Basic Greetings",
       description: "Learn essential greetings to start conversations in Portuguese.",
       imageUrl: "",
@@ -224,11 +191,9 @@ export class MemStorage implements IStorage {
       order: 1,
       wordCount: 6,
       status: "in_progress"
-    };
-    this.lessons.set(basicGreetings.id, basicGreetings);
+    }).returning();
     
-    const orderingFood: Lesson = {
-      id: this.currentLessonId++,
+    const [orderingFood] = await db.insert(lessons).values({
       title: "Ordering Food",
       description: "Learn vocabulary for restaurants and cafes",
       imageUrl: "",
@@ -236,11 +201,9 @@ export class MemStorage implements IStorage {
       order: 2,
       wordCount: 15,
       status: "available"
-    };
-    this.lessons.set(orderingFood.id, orderingFood);
+    }).returning();
     
-    const gettingAround: Lesson = {
-      id: this.currentLessonId++,
+    const [gettingAround] = await db.insert(lessons).values({
       title: "Getting Around",
       description: "Transportation and directions vocabulary",
       imageUrl: "",
@@ -248,11 +211,9 @@ export class MemStorage implements IStorage {
       order: 3,
       wordCount: 12,
       status: "available"
-    };
-    this.lessons.set(gettingAround.id, gettingAround);
+    }).returning();
     
-    const shopping: Lesson = {
-      id: this.currentLessonId++,
+    const [shopping] = await db.insert(lessons).values({
       title: "Shopping",
       description: "Essential vocabulary for shopping",
       imageUrl: "",
@@ -260,8 +221,7 @@ export class MemStorage implements IStorage {
       order: 4,
       wordCount: 18,
       status: "available"
-    };
-    this.lessons.set(shopping.id, shopping);
+    }).returning();
     
     // Create vocabulary for Basic Greetings
     const greetingsVocabulary = [
@@ -303,9 +263,8 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    greetingsVocabulary.forEach(vocab => {
-      const vocabulary: Vocabulary = {
-        id: this.currentVocabularyId++,
+    for (const vocab of greetingsVocabulary) {
+      await db.insert(vocabulary).values({
         lessonId: basicGreetings.id,
         portuguese: vocab.portuguese,
         english: vocab.english,
@@ -313,9 +272,8 @@ export class MemStorage implements IStorage {
         audioUrl: `/api/audio/${vocab.portuguese.toLowerCase().replace(/ /g, '_')}`,
         pronunciation: vocab.pronunciation,
         usage: vocab.usage
-      };
-      this.vocabularies.set(vocabulary.id, vocabulary);
-    });
+      });
+    }
     
     // Create quiz questions for Basic Greetings
     const greetingsQuizQuestions = [
@@ -351,39 +309,35 @@ export class MemStorage implements IStorage {
       }
     ];
     
-    greetingsQuizQuestions.forEach(q => {
-      const question: QuizQuestion = {
-        id: this.currentQuizQuestionId++,
+    for (const q of greetingsQuizQuestions) {
+      const [question] = await db.insert(quizQuestions).values({
         lessonId: basicGreetings.id,
         question: q.question,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation
-      };
-      this.quizQuestions.set(question.id, question);
+      }).returning();
       
       // Create options for each question
-      q.options.forEach(opt => {
-        const option: QuizOption = {
-          id: this.currentQuizOptionId++,
+      for (const opt of q.options) {
+        await db.insert(quizOptions).values({
           questionId: question.id,
           option: opt,
           isCorrect: opt === q.correctAnswer
-        };
-        this.quizOptions.set(option.id, option);
-      });
-    });
+        });
+      }
+    }
     
     // Create user progress
-    const progress: UserProgress = {
-      id: this.currentUserProgressId++,
+    await db.insert(userProgress).values({
       userId: user.id,
       lessonId: basicGreetings.id,
       completed: false,
       score: null,
       completedAt: null
-    };
-    this.userProgress.set(progress.id, progress);
+    });
+    
+    console.log("Database seeded successfully");
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

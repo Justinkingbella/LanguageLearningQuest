@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User model
 export const users = pgTable("users", {
@@ -11,6 +12,10 @@ export const users = pgTable("users", {
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),
 });
+
+export const usersRelations = relations(users, ({ many }) => ({
+  progress: many(userProgress),
+}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -30,6 +35,12 @@ export const lessons = pgTable("lessons", {
   status: text("status").notNull().default("locked"), // locked, available, in_progress, completed
 });
 
+export const lessonsRelations = relations(lessons, ({ many }) => ({
+  vocabulary: many(vocabulary),
+  quizQuestions: many(quizQuestions),
+  userProgress: many(userProgress),
+}));
+
 export const insertLessonSchema = createInsertSchema(lessons).omit({
   id: true,
 });
@@ -37,7 +48,7 @@ export const insertLessonSchema = createInsertSchema(lessons).omit({
 // Vocabulary model
 export const vocabulary = pgTable("vocabulary", {
   id: serial("id").primaryKey(),
-  lessonId: integer("lesson_id").notNull(),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
   portuguese: text("portuguese").notNull(),
   english: text("english").notNull(),
   imageUrl: text("image_url"),
@@ -46,6 +57,13 @@ export const vocabulary = pgTable("vocabulary", {
   usage: text("usage"),
 });
 
+export const vocabularyRelations = relations(vocabulary, ({ one }) => ({
+  lesson: one(lessons, {
+    fields: [vocabulary.lessonId],
+    references: [lessons.id],
+  }),
+}));
+
 export const insertVocabularySchema = createInsertSchema(vocabulary).omit({
   id: true,
 });
@@ -53,11 +71,19 @@ export const insertVocabularySchema = createInsertSchema(vocabulary).omit({
 // Quiz questions model
 export const quizQuestions = pgTable("quiz_questions", {
   id: serial("id").primaryKey(),
-  lessonId: integer("lesson_id").notNull(),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
   question: text("question").notNull(),
   correctAnswer: text("correct_answer").notNull(),
   explanation: text("explanation"),
 });
+
+export const quizQuestionsRelations = relations(quizQuestions, ({ one, many }) => ({
+  lesson: one(lessons, {
+    fields: [quizQuestions.lessonId],
+    references: [lessons.id],
+  }),
+  options: many(quizOptions),
+}));
 
 export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({
   id: true,
@@ -66,10 +92,17 @@ export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({
 // Quiz options model
 export const quizOptions = pgTable("quiz_options", {
   id: serial("id").primaryKey(),
-  questionId: integer("question_id").notNull(),
+  questionId: integer("question_id").notNull().references(() => quizQuestions.id, { onDelete: "cascade" }),
   option: text("option").notNull(),
   isCorrect: boolean("is_correct").notNull().default(false),
 });
+
+export const quizOptionsRelations = relations(quizOptions, ({ one }) => ({
+  question: one(quizQuestions, {
+    fields: [quizOptions.questionId],
+    references: [quizQuestions.id],
+  }),
+}));
 
 export const insertQuizOptionSchema = createInsertSchema(quizOptions).omit({
   id: true,
@@ -78,12 +111,23 @@ export const insertQuizOptionSchema = createInsertSchema(quizOptions).omit({
 // User progress model
 export const userProgress = pgTable("user_progress", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  lessonId: integer("lesson_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
   completed: boolean("completed").notNull().default(false),
   score: integer("score"),
   completedAt: text("completed_at"),
 });
+
+export const userProgressRelations = relations(userProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userProgress.userId],
+    references: [users.id],
+  }),
+  lesson: one(lessons, {
+    fields: [userProgress.lessonId],
+    references: [lessons.id],
+  }),
+}));
 
 export const insertUserProgressSchema = createInsertSchema(userProgress).omit({
   id: true,
