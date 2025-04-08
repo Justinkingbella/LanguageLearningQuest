@@ -14,6 +14,9 @@ import AuthPage from "@/pages/auth-page";
 import CertificatePage from "@/pages/certificate-page";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
+
+import ProfilePage from "@/pages/profile";
+
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
 
@@ -29,6 +32,7 @@ function Router() {
       <ProtectedRoute path="/conversations/:lessonId" component={ConversationsPage} />
       <ProtectedRoute path="/conversation/:id" component={ConversationPage} />
       <ProtectedRoute path="/certificate" component={CertificatePage} />
+      <ProtectedRoute path="/profile" component={ProfilePage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
@@ -51,7 +55,7 @@ function AppContent() {
   const [location] = useLocation();
   
   // Only show navigation if the user is authenticated
-  const isAuthPath = location === '/auth';
+  const isAuthPath = location.pathname === '/auth';
   
   if (isAuthPath) {
     return (
