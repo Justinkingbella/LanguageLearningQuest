@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { Lesson } from "@shared/schema";
+import { Progress } from "@/components/ui/progress";
 
 interface LessonCardProps {
   lesson: Lesson;
@@ -16,19 +17,27 @@ export default function LessonCard({ lesson, isCurrentLesson = false }: LessonCa
   const statusMap = {
     locked: { 
       label: "Locked", 
-      color: "bg-gray-200 bg-opacity-10 text-gray-500" 
+      color: "bg-gray-200 bg-opacity-10 text-gray-500 border-gray-300",
+      icon: <Lock className="h-3 w-3 mr-1" />,
+      progress: 0
     },
     available: { 
       label: "Available", 
-      color: "bg-blue-500 bg-opacity-10 text-blue-500" 
+      color: "bg-blue-100 text-blue-500 border-blue-300",
+      icon: <BookOpen className="h-3 w-3 mr-1" />,
+      progress: 0
     },
     in_progress: { 
       label: "In Progress", 
-      color: "bg-green-500 bg-opacity-10 text-green-500" 
+      color: "bg-green-100 text-green-500 border-green-300",
+      icon: <Sparkles className="h-3 w-3 mr-1" />,
+      progress: 30
     },
     completed: { 
       label: "Completed", 
-      color: "bg-yellow-500 bg-opacity-10 text-yellow-500" 
+      color: "bg-yellow-100 text-yellow-500 border-yellow-300",
+      icon: <Sparkles className="h-3 w-3 mr-1" />,
+      progress: 100
     }
   };
 
@@ -39,34 +48,62 @@ export default function LessonCard({ lesson, isCurrentLesson = false }: LessonCa
   };
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="p-4 border-b">
+    <Card className="overflow-hidden border-l-4 hover:shadow-md transition-shadow duration-300" 
+      style={{ borderLeftColor: lesson.status === 'in_progress' ? '#22c55e' : 
+               lesson.status === 'completed' ? '#eab308' : 
+               lesson.status === 'available' ? '#3b82f6' : '#d1d5db' }}
+    >
+      <CardHeader className="p-3 md:p-4 border-b">
         <div className="flex justify-between items-center">
-          <h3 className="font-heading font-bold text-lg">{lesson.title}</h3>
+          <h3 className="font-heading font-bold text-base md:text-lg line-clamp-1">{lesson.title}</h3>
           <Badge 
-            variant="outline" 
-            className={`${status.color}`}
+            className={`${status.color} text-xs`}
           >
-            {status.label}
+            <span className="flex items-center">
+              {status.icon}
+              {status.label}
+            </span>
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4">
-        <p className="text-muted-foreground mb-4">{lesson.description}</p>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Clock className="text-yellow-500 h-4 w-4 mr-1" />
-            <span className="text-sm text-muted-foreground">
-              {lesson.duration} minutes
+      <CardContent className="p-3 md:p-4">
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{lesson.description}</p>
+        
+        {status.progress > 0 && (
+          <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span>Progress</span>
+              <span>{status.progress}%</span>
+            </div>
+            <Progress value={status.progress} className="h-1.5" />
+          </div>
+        )}
+        
+        <div className="flex flex-wrap justify-between gap-2 items-center">
+          <div className="flex items-center bg-neutral-50 px-2 py-1 rounded-full text-xs">
+            <Clock className="text-amber-500 h-3 w-3 mr-1" />
+            <span className="text-muted-foreground">
+              {lesson.duration} min
             </span>
           </div>
+          
+          <div className="flex items-center bg-neutral-50 px-2 py-1 rounded-full text-xs">
+            <BookOpen className="text-blue-500 h-3 w-3 mr-1" />
+            <span className="text-muted-foreground">
+              {lesson.wordCount} words
+            </span>
+          </div>
+          
           <Button 
             onClick={handleContinue}
             disabled={lesson.status === 'locked'}
-            className="bg-green-500 hover:bg-green-600 text-white"
+            size="sm"
+            className={`ml-auto ${isCurrentLesson ? 
+              'bg-green-500 hover:bg-green-600' : 
+              'bg-blue-500 hover:bg-blue-600'} text-white`}
           >
             {isCurrentLesson ? 'Continue' : 'Start'}
-            <ArrowRight className="ml-1 h-4 w-4" />
+            <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardContent>
