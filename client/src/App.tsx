@@ -19,6 +19,7 @@ import ProfilePage from "@/pages/profile";
 
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
+import { cn } from "@/lib/utils";
 
 function Router() {
   return (
