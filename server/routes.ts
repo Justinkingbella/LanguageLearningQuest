@@ -6,6 +6,7 @@ import {
   insertUserConversationPracticeSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create API routes
@@ -683,6 +684,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get user conversation practice error:', error);
       return res.status(500).json({ error: "Failed to fetch conversation practice" });
+    }
+  });
+
+  // Set up authentication routes and middleware
+  setupAuth(app);
+  
+  // Create certificate endpoint
+  app.get("/api/users/:id/certificate", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Get all user progress
+      const progress = await storage.getUserProgressByUserId(id);
+      
+      // Get all lessons
+      const lessons = await storage.getLessons();
+      
+      // Calculate progress percentage
+      const progressPercentage = await storage.calculateUserProgressPercentage(id);
+      
+      // Check if user has completed enough lessons for a certificate
+      const completedLessons = progress.filter(p => p.completed).length;
+      const totalLessons = lessons.length;
+      const hasCompletedEnough = completedLessons > 0 && (completedLessons / totalLessons >= 0.3);
+      
+      // Determine certificate level
+      let certificateLevel = "none";
+      if (completedLessons / totalLessons >= 0.8) {
+        certificateLevel = "advanced";
+      } else if (completedLessons / totalLessons >= 0.5) {
+        certificateLevel = "intermediate";
+      } else if (hasCompletedEnough) {
+        certificateLevel = "beginner";
+      }
+      
+      if (certificateLevel === "none") {
+        return res.status(404).json({ 
+          error: "Not eligible for certificate yet", 
+          completedLessons,
+          totalLessons,
+          progressPercentage
+        });
+      }
+      
+      // Format the current date
+      const currentDate = new Date();
+      const formattedDate = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(currentDate);
+      
+      return res.json({
+        userId: user.id,
+        userName: user.displayName,
+        completedLessons,
+        totalLessons,
+        progressPercentage,
+        certificateLevel,
+        certificateDate: formattedDate,
+        serialNumber: `PTG-${user.id}-${Math.floor(Date.now() / 1000)}`
+      });
+    } catch (error) {
+      console.error('Certificate generation error:', error);
+      return res.status(500).json({ error: "Failed to generate certificate" });
     }
   });
 
