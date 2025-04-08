@@ -1,4 +1,4 @@
-import { Home, Compass, Dumbbell, User, BookOpen } from "lucide-react";
+import { Home, Dumbbell, User, BookOpen, MessageSquare } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,11 +47,13 @@ export default function BottomNavigation() {
           </button>
           
           <button 
-            onClick={() => handleNavigate("/practice", false)}
-            className="flex flex-col items-center px-3 py-1 text-neutral-500 hover:text-green-500"
+            onClick={() => handleNavigate("/conversations")}
+            className={`flex flex-col items-center px-3 py-1 ${
+              location.startsWith("/conversation") ? "text-green-500" : "text-neutral-500 hover:text-green-500"
+            }`}
           >
-            <Dumbbell className="h-5 w-5" />
-            <span className="text-xs mt-1">Practice</span>
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-xs mt-1">Conversations</span>
           </button>
           
           <button 

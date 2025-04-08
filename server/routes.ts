@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserProgressSchema } from "@shared/schema";
+import { 
+  insertUserProgressSchema,
+  insertUserConversationPracticeSchema
+} from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -347,6 +350,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Vocabulary search error:', error);
       return res.status(500).json({ error: "Failed to search vocabulary" });
+    }
+  });
+  
+  // Get conversation scenarios for a lesson
+  app.get("/api/lessons/:id/conversations", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid lesson ID" });
+      }
+      
+      const scenarios = await storage.getConversationScenariosByLessonId(id);
+      return res.json(scenarios);
+    } catch (error) {
+      console.error('Get conversation scenarios error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation scenarios" });
+    }
+  });
+  
+  // Get a specific conversation scenario
+  app.get("/api/conversations/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      const scenario = await storage.getConversationScenario(id);
+      if (!scenario) {
+        return res.status(404).json({ error: "Conversation scenario not found" });
+      }
+      
+      return res.json(scenario);
+    } catch (error) {
+      console.error('Get conversation scenario error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation scenario" });
+    }
+  });
+  
+  // Get dialogues for a conversation scenario
+  app.get("/api/conversations/:id/dialogues", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      const dialogues = await storage.getConversationDialoguesByScenarioId(id);
+      
+      // Parse JSON fields
+      const parsedDialogues = dialogues.map(dialogue => ({
+        ...dialogue,
+        hints: dialogue.hints ? JSON.parse(dialogue.hints as string) : [],
+        acceptedResponses: dialogue.acceptedResponses ? JSON.parse(dialogue.acceptedResponses as string) : []
+      }));
+      
+      return res.json(parsedDialogues);
+    } catch (error) {
+      console.error('Get conversation dialogues error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation dialogues" });
+    }
+  });
+  
+  // Submit conversation practice results
+  app.post("/api/conversations/:id/practice", async (req, res) => {
+    try {
+      const scenarioId = parseInt(req.params.id);
+      if (isNaN(scenarioId)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      // Validate request body
+      const practiceSchema = insertUserConversationPracticeSchema.extend({
+        accuracy: z.number().min(0).max(100),
+      });
+      
+      const validatedData = practiceSchema.parse(req.body);
+      
+      // Check if practice already exists
+      const existingPractice = await storage.getUserConversationPracticeByScenarioId(
+        validatedData.userId, 
+        scenarioId
+      );
+      
+      let practice;
+      
+      if (existingPractice) {
+        // Update existing practice
+        practice = await storage.updateUserConversationPractice(existingPractice.id, {
+          completed: true,
+          accuracy: validatedData.accuracy,
+          completedAt: new Date().toISOString()
+        });
+      } else {
+        // Create new practice
+        practice = await storage.createUserConversationPractice({
+          userId: validatedData.userId,
+          scenarioId,
+          completed: true,
+          accuracy: validatedData.accuracy,
+          completedAt: new Date().toISOString()
+        });
+      }
+      
+      return res.json(practice);
+    } catch (error) {
+      console.error('Submit conversation practice error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data provided", details: error.errors });
+      }
+      return res.status(500).json({ error: "Failed to save conversation practice" });
+    }
+  });
+  
+  // Get conversation practice for a user
+  app.get("/api/users/:id/conversation-practice", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const practice = await storage.getUserConversationPracticeByUserId(id);
+      return res.json(practice);
+    } catch (error) {
+      console.error('Get user conversation practice error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation practice" });
+    }
+  });
+  
+  // Get user conversation practice for a specific scenario
+  app.get("/api/users/:userId/conversations/:scenarioId/practice", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const scenarioId = parseInt(req.params.scenarioId);
+      
+      if (isNaN(userId) || isNaN(scenarioId)) {
+        return res.status(400).json({ error: "Invalid user ID or scenario ID" });
+      }
+      
+      const practice = await storage.getUserConversationPracticeByScenarioId(userId, scenarioId);
+      
+      if (!practice) {
+        return res.status(404).json({ error: "Conversation practice not found" });
+      }
+      
+      return res.json(practice);
+    } catch (error) {
+      console.error('Get user conversation practice error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation practice" });
     }
   });
 

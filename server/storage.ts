@@ -4,7 +4,10 @@ import {
   vocabulary, type Vocabulary, type InsertVocabulary,
   quizQuestions, type QuizQuestion, type InsertQuizQuestion,
   quizOptions, type QuizOption, type InsertQuizOption,
-  userProgress, type UserProgress, type InsertUserProgress
+  userProgress, type UserProgress, type InsertUserProgress,
+  conversationScenarios, type ConversationScenario, type InsertConversationScenario,
+  conversationDialogues, type ConversationDialogue, type InsertConversationDialogue,
+  userConversationPractice, type UserConversationPractice, type InsertUserConversationPractice
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -40,6 +43,20 @@ export interface IStorage {
   createUserProgress(progress: InsertUserProgress): Promise<UserProgress>;
   updateUserProgress(id: number, progress: Partial<UserProgress>): Promise<UserProgress | undefined>;
   calculateUserProgressPercentage(userId: number): Promise<number>;
+  
+  // Conversation operations
+  getConversationScenariosByLessonId(lessonId: number): Promise<ConversationScenario[]>;
+  getConversationScenario(id: number): Promise<ConversationScenario | undefined>;
+  createConversationScenario(scenario: InsertConversationScenario): Promise<ConversationScenario>;
+  
+  getConversationDialoguesByScenarioId(scenarioId: number): Promise<ConversationDialogue[]>;
+  getConversationDialogue(id: number): Promise<ConversationDialogue | undefined>;
+  createConversationDialogue(dialogue: InsertConversationDialogue): Promise<ConversationDialogue>;
+  
+  getUserConversationPracticeByUserId(userId: number): Promise<UserConversationPractice[]>;
+  getUserConversationPracticeByScenarioId(userId: number, scenarioId: number): Promise<UserConversationPractice | undefined>;
+  createUserConversationPractice(practice: InsertUserConversationPractice): Promise<UserConversationPractice>;
+  updateUserConversationPractice(id: number, practice: Partial<UserConversationPractice>): Promise<UserConversationPractice | undefined>;
   
   // Database initialization
   seedDatabase(): Promise<void>;
@@ -160,6 +177,63 @@ export class DatabaseStorage implements IStorage {
     
     if (totalLessons === 0) return 0;
     return Math.round((completedLessons / totalLessons) * 100);
+  }
+  
+  // Conversation operations
+  async getConversationScenariosByLessonId(lessonId: number): Promise<ConversationScenario[]> {
+    return await db.select().from(conversationScenarios).where(eq(conversationScenarios.lessonId, lessonId));
+  }
+  
+  async getConversationScenario(id: number): Promise<ConversationScenario | undefined> {
+    const [scenario] = await db.select().from(conversationScenarios).where(eq(conversationScenarios.id, id));
+    return scenario;
+  }
+  
+  async createConversationScenario(insertScenario: InsertConversationScenario): Promise<ConversationScenario> {
+    const [scenario] = await db.insert(conversationScenarios).values(insertScenario).returning();
+    return scenario;
+  }
+  
+  async getConversationDialoguesByScenarioId(scenarioId: number): Promise<ConversationDialogue[]> {
+    return await db.select().from(conversationDialogues)
+      .where(eq(conversationDialogues.scenarioId, scenarioId))
+      .orderBy(conversationDialogues.order);
+  }
+  
+  async getConversationDialogue(id: number): Promise<ConversationDialogue | undefined> {
+    const [dialogue] = await db.select().from(conversationDialogues).where(eq(conversationDialogues.id, id));
+    return dialogue;
+  }
+  
+  async createConversationDialogue(insertDialogue: InsertConversationDialogue): Promise<ConversationDialogue> {
+    const [dialogue] = await db.insert(conversationDialogues).values(insertDialogue).returning();
+    return dialogue;
+  }
+  
+  async getUserConversationPracticeByUserId(userId: number): Promise<UserConversationPractice[]> {
+    return await db.select().from(userConversationPractice).where(eq(userConversationPractice.userId, userId));
+  }
+  
+  async getUserConversationPracticeByScenarioId(userId: number, scenarioId: number): Promise<UserConversationPractice | undefined> {
+    const [practice] = await db.select().from(userConversationPractice)
+      .where(and(
+        eq(userConversationPractice.userId, userId),
+        eq(userConversationPractice.scenarioId, scenarioId)
+      ));
+    return practice;
+  }
+  
+  async createUserConversationPractice(insertPractice: InsertUserConversationPractice): Promise<UserConversationPractice> {
+    const [practice] = await db.insert(userConversationPractice).values(insertPractice).returning();
+    return practice;
+  }
+  
+  async updateUserConversationPractice(id: number, partialPractice: Partial<UserConversationPractice>): Promise<UserConversationPractice | undefined> {
+    const [practice] = await db.update(userConversationPractice)
+      .set(partialPractice)
+      .where(eq(userConversationPractice.id, id))
+      .returning();
+    return practice;
   }
   
   // Seed database with initial data
@@ -515,6 +589,191 @@ export class DatabaseStorage implements IStorage {
       lessonId: shopping.id,
       completed: false,
       score: null,
+      completedAt: null
+    });
+    
+    // Create conversation scenarios for Basic Greetings
+    const [cafeScenario] = await db.insert(conversationScenarios).values({
+      lessonId: basicGreetings.id,
+      title: "At a Café",
+      description: "Practice a simple conversation when ordering at a café",
+      context: "You're at a café and you want to order a coffee. Practice greeting the barista and ordering your drink.",
+      imageUrl: "",
+      difficulty: "beginner",
+      category: "greetings"
+    }).returning();
+    
+    // Create dialogue for the café scenario
+    const cafeDialogues = [
+      {
+        speakerRole: "native_speaker",
+        portuguese: "Olá, bom dia. Como posso ajudar?",
+        english: "Hello, good morning. How can I help?",
+        order: 1,
+        hints: JSON.stringify(["Respond with a greeting", "Say Bom dia"]),
+        acceptedResponses: JSON.stringify(["Bom dia", "Olá, bom dia", "Olá"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Bom dia. Eu quero um café, por favor.",
+        english: "Good morning. I would like a coffee, please.",
+        order: 2,
+        hints: JSON.stringify(["Say you want a coffee", "Use 'por favor'"]),
+        acceptedResponses: JSON.stringify(["Eu quero um café, por favor", "Um café, por favor", "Quero um café"])
+      },
+      {
+        speakerRole: "native_speaker",
+        portuguese: "Com certeza. Algo mais?",
+        english: "Of course. Anything else?",
+        order: 3,
+        hints: JSON.stringify(["Say no", "Use 'não'"]),
+        acceptedResponses: JSON.stringify(["Não, obrigado", "Não", "Não, só isso"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Não, obrigado. Quanto custa?",
+        english: "No, thank you. How much does it cost?",
+        order: 4,
+        hints: JSON.stringify(["Ask about the price", "Use 'quanto custa'"]),
+        acceptedResponses: JSON.stringify(["Quanto custa?", "Quanto é?", "Qual é o preço?"])
+      },
+      {
+        speakerRole: "native_speaker",
+        portuguese: "São três reais.",
+        english: "It's three reais.",
+        order: 5,
+        hints: JSON.stringify(["Thank them", "Use 'obrigado/obrigada'"]),
+        acceptedResponses: JSON.stringify(["Obrigado", "Obrigada", "Muito obrigado"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Obrigado. Tchau!",
+        english: "Thank you. Goodbye!",
+        order: 6,
+        hints: JSON.stringify(["Say goodbye", "Use 'tchau'"]),
+        acceptedResponses: JSON.stringify(["Tchau", "Até logo", "Até mais"])
+      }
+    ];
+    
+    for (const dialogue of cafeDialogues) {
+      await db.insert(conversationDialogues).values({
+        scenarioId: cafeScenario.id,
+        speakerRole: dialogue.speakerRole,
+        portuguese: dialogue.portuguese,
+        english: dialogue.english,
+        audioUrl: dialogue.speakerRole === "native_speaker" ? `/api/audio/${dialogue.portuguese.toLowerCase().replace(/ /g, '_')}` : null,
+        order: dialogue.order,
+        hints: dialogue.hints,
+        acceptedResponses: dialogue.acceptedResponses
+      });
+    }
+    
+    // Create a conversation scenario for Ordering Food
+    const [restaurantScenario] = await db.insert(conversationScenarios).values({
+      lessonId: orderingFood.id,
+      title: "At a Restaurant",
+      description: "Practice ordering food at a restaurant",
+      context: "You're at a restaurant and want to order a meal. Practice asking for the menu, ordering food and drinks, and asking for the bill.",
+      imageUrl: "",
+      difficulty: "beginner",
+      category: "restaurant"
+    }).returning();
+    
+    // Create dialogue for the restaurant scenario
+    const restaurantDialogues = [
+      {
+        speakerRole: "native_speaker",
+        portuguese: "Boa noite. Bem-vindo ao nosso restaurante.",
+        english: "Good evening. Welcome to our restaurant.",
+        order: 1,
+        hints: JSON.stringify(["Respond with a greeting", "Say Boa noite"]),
+        acceptedResponses: JSON.stringify(["Boa noite", "Olá, boa noite", "Obrigado"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Boa noite. Eu gostaria de ver o cardápio, por favor.",
+        english: "Good evening. I would like to see the menu, please.",
+        order: 2,
+        hints: JSON.stringify(["Ask for the menu", "Use 'cardápio'"]),
+        acceptedResponses: JSON.stringify(["Cardápio, por favor", "Eu gostaria de ver o cardápio", "Posso ver o cardápio?"])
+      },
+      {
+        speakerRole: "native_speaker",
+        portuguese: "Aqui está o cardápio. O que deseja beber?",
+        english: "Here is the menu. What would you like to drink?",
+        order: 3,
+        hints: JSON.stringify(["Order a drink", "Use 'água' or 'suco'"]),
+        acceptedResponses: JSON.stringify(["Água, por favor", "Um suco, por favor", "Eu gostaria de água"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Uma água, por favor.",
+        english: "A water, please.",
+        order: 4,
+        hints: JSON.stringify(["Order water", "Use 'água'"]),
+        acceptedResponses: JSON.stringify(["Água", "Uma água", "Água, por favor"])
+      },
+      {
+        speakerRole: "native_speaker",
+        portuguese: "E para comer?",
+        english: "And to eat?",
+        order: 5,
+        hints: JSON.stringify(["Order food", "Use 'frango' or 'peixe'"]),
+        acceptedResponses: JSON.stringify(["Frango, por favor", "Eu gostaria de frango", "Peixe, por favor"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Eu gostaria de frango com arroz, por favor.",
+        english: "I would like chicken with rice, please.",
+        order: 6,
+        hints: JSON.stringify(["Order chicken and rice", "Use 'frango' and 'arroz'"]),
+        acceptedResponses: JSON.stringify(["Frango com arroz", "Frango e arroz, por favor", "Eu quero frango com arroz"])
+      },
+      {
+        speakerRole: "native_speaker",
+        portuguese: "Ótima escolha! Algo mais?",
+        english: "Great choice! Anything else?",
+        order: 7,
+        hints: JSON.stringify(["Say no", "Use 'não'"]),
+        acceptedResponses: JSON.stringify(["Não, obrigado", "Não", "Só isso, obrigado"])
+      },
+      {
+        speakerRole: "user",
+        portuguese: "Não, obrigado. A conta, por favor?",
+        english: "No, thank you. The bill, please?",
+        order: 8,
+        hints: JSON.stringify(["Ask for the bill", "Use 'a conta'"]),
+        acceptedResponses: JSON.stringify(["A conta, por favor", "Pode trazer a conta?", "Quanto custa?"])
+      }
+    ];
+    
+    for (const dialogue of restaurantDialogues) {
+      await db.insert(conversationDialogues).values({
+        scenarioId: restaurantScenario.id,
+        speakerRole: dialogue.speakerRole,
+        portuguese: dialogue.portuguese,
+        english: dialogue.english,
+        audioUrl: dialogue.speakerRole === "native_speaker" ? `/api/audio/${dialogue.portuguese.toLowerCase().replace(/ /g, '_')}` : null,
+        order: dialogue.order,
+        hints: dialogue.hints,
+        acceptedResponses: dialogue.acceptedResponses
+      });
+    }
+    
+    // Create user conversation practice records
+    await db.insert(userConversationPractice).values({
+      userId: user.id,
+      scenarioId: cafeScenario.id,
+      completed: false,
+      accuracy: null,
+      completedAt: null
+    });
+    
+    await db.insert(userConversationPractice).values({
+      userId: user.id,
+      scenarioId: restaurantScenario.id,
+      completed: false,
+      accuracy: null,
       completedAt: null
     });
     

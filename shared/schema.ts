@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, primaryKey, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -15,6 +15,7 @@ export const users = pgTable("users", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   progress: many(userProgress),
+  conversationPractice: many(userConversationPractice),
 }));
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -39,6 +40,7 @@ export const lessonsRelations = relations(lessons, ({ many }) => ({
   vocabulary: many(vocabulary),
   quizQuestions: many(quizQuestions),
   userProgress: many(userProgress),
+  conversationScenarios: many(conversationScenarios),
 }));
 
 export const insertLessonSchema = createInsertSchema(lessons).omit({
@@ -149,5 +151,88 @@ export type InsertQuizQuestion = z.infer<typeof insertQuizQuestionSchema>;
 export type QuizOption = typeof quizOptions.$inferSelect;
 export type InsertQuizOption = z.infer<typeof insertQuizOptionSchema>;
 
+// Conversation scenarios model
+export const conversationScenarios = pgTable("conversation_scenarios", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  context: text("context").notNull(),
+  imageUrl: text("image_url"),
+  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced
+  category: text("category").notNull(), // greetings, restaurant, shopping, etc.
+});
+
+export const conversationScenariosRelations = relations(conversationScenarios, ({ one, many }) => ({
+  lesson: one(lessons, {
+    fields: [conversationScenarios.lessonId],
+    references: [lessons.id],
+  }),
+  dialogues: many(conversationDialogues),
+}));
+
+export const insertConversationScenarioSchema = createInsertSchema(conversationScenarios).omit({
+  id: true,
+});
+
+// Conversation dialogues model
+export const conversationDialogues = pgTable("conversation_dialogues", {
+  id: serial("id").primaryKey(),
+  scenarioId: integer("scenario_id").notNull().references(() => conversationScenarios.id, { onDelete: "cascade" }),
+  speakerRole: text("speaker_role").notNull(), // user, native_speaker
+  portuguese: text("portuguese").notNull(),
+  english: text("english").notNull(),
+  audioUrl: text("audio_url"),
+  order: integer("order").notNull(),
+  hints: jsonb("hints"), // JSON array of hint strings
+  acceptedResponses: jsonb("accepted_responses"), // JSON array of alternative acceptable responses
+});
+
+export const conversationDialoguesRelations = relations(conversationDialogues, ({ one }) => ({
+  scenario: one(conversationScenarios, {
+    fields: [conversationDialogues.scenarioId],
+    references: [conversationScenarios.id],
+  }),
+}));
+
+export const insertConversationDialogueSchema = createInsertSchema(conversationDialogues).omit({
+  id: true,
+});
+
+// User conversation practice model
+export const userConversationPractice = pgTable("user_conversation_practice", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scenarioId: integer("scenario_id").notNull().references(() => conversationScenarios.id, { onDelete: "cascade" }),
+  completed: boolean("completed").notNull().default(false),
+  accuracy: integer("accuracy"), // percentage of correct responses
+  completedAt: text("completed_at"),
+});
+
+export const userConversationPracticeRelations = relations(userConversationPractice, ({ one }) => ({
+  user: one(users, {
+    fields: [userConversationPractice.userId],
+    references: [users.id],
+  }),
+  scenario: one(conversationScenarios, {
+    fields: [userConversationPractice.scenarioId],
+    references: [conversationScenarios.id],
+  }),
+}));
+
+export const insertUserConversationPracticeSchema = createInsertSchema(userConversationPractice).omit({
+  id: true,
+});
+
+// Type definitions
 export type UserProgress = typeof userProgress.$inferSelect;
 export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
+
+export type ConversationScenario = typeof conversationScenarios.$inferSelect;
+export type InsertConversationScenario = z.infer<typeof insertConversationScenarioSchema>;
+
+export type ConversationDialogue = typeof conversationDialogues.$inferSelect;
+export type InsertConversationDialogue = z.infer<typeof insertConversationDialogueSchema>;
+
+export type UserConversationPractice = typeof userConversationPractice.$inferSelect;
+export type InsertUserConversationPractice = z.infer<typeof insertUserConversationPracticeSchema>;
