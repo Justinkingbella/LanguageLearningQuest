@@ -292,6 +292,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Failed to fetch statistics" });
     }
   });
+  
+  // Search vocabulary
+  app.get("/api/vocabulary/search", async (req, res) => {
+    try {
+      const searchTerm = req.query.term as string;
+      
+      if (!searchTerm || typeof searchTerm !== 'string') {
+        return res.status(400).json({ error: "Search term is required" });
+      }
+      
+      // Get all vocabulary items from all lessons
+      const lessons = await storage.getLessons();
+      const results = [];
+      
+      for (const lesson of lessons) {
+        const vocabularyItems = await storage.getVocabularyByLessonId(lesson.id);
+        
+        // Filter vocabulary items that match the search term
+        const matchingItems = vocabularyItems.filter(item => 
+          item.portuguese.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          item.english.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        // Add lesson info to matching items
+        const itemsWithLessonInfo = matchingItems.map(item => ({
+          ...item,
+          lessonTitle: lesson.title,
+          lessonId: lesson.id
+        }));
+        
+        results.push(...itemsWithLessonInfo);
+      }
+      
+      // Sort by relevance - exact matches first, then partial matches
+      // This is a basic relevance algorithm that could be improved
+      results.sort((a, b) => {
+        const aExactMatch = 
+          a.portuguese.toLowerCase() === searchTerm.toLowerCase() || 
+          a.english.toLowerCase() === searchTerm.toLowerCase();
+        
+        const bExactMatch = 
+          b.portuguese.toLowerCase() === searchTerm.toLowerCase() || 
+          b.english.toLowerCase() === searchTerm.toLowerCase();
+        
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+        
+        // If both are exact matches or both are partial, sort alphabetically
+        return a.portuguese.localeCompare(b.portuguese);
+      });
+      
+      return res.json(results);
+    } catch (error) {
+      console.error('Vocabulary search error:', error);
+      return res.status(500).json({ error: "Failed to search vocabulary" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

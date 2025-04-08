@@ -1,4 +1,4 @@
-import { Home, Compass, Dumbbell, User } from "lucide-react";
+import { Home, Compass, Dumbbell, User, BookOpen } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,11 +37,13 @@ export default function BottomNavigation() {
           </button>
           
           <button 
-            onClick={() => handleNavigate("/explore", false)}
-            className="flex flex-col items-center px-3 py-1 text-neutral-500 hover:text-green-500"
+            onClick={() => handleNavigate("/dictionary")}
+            className={`flex flex-col items-center px-3 py-1 ${
+              isActivePage("/dictionary") ? "text-green-500" : "text-neutral-500 hover:text-green-500"
+            }`}
           >
-            <Compass className="h-5 w-5" />
-            <span className="text-xs mt-1">Explore</span>
+            <BookOpen className="h-5 w-5" />
+            <span className="text-xs mt-1">Dictionary</span>
           </button>
           
           <button 

@@ -7,6 +7,7 @@ import HomePage from "@/pages/home";
 import VocabularyPage from "@/pages/vocabulary";
 import QuizPage from "@/pages/quiz";
 import ResultsPage from "@/pages/results";
+import DictionaryPage from "@/pages/dictionary";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
 import { useState } from "react";
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/lessons/:id/vocabulary" component={VocabularyPage} />
       <Route path="/lessons/:id/quiz" component={QuizPage} />
       <Route path="/lessons/:id/results" component={ResultsPage} />
+      <Route path="/dictionary" component={DictionaryPage} />
       <Route component={NotFound} />
     </Switch>
   );
