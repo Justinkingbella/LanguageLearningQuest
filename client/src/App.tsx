@@ -54,24 +54,16 @@ function AppContent() {
   const { user } = useAuth();
   const [location] = useLocation();
   
-  // Only show navigation if the user is authenticated
-  const isAuthPath = location.pathname === '/auth';
-  
-  if (isAuthPath) {
-    return (
-      <div className="min-h-screen">
-        <Router />
-      </div>
-    );
-  }
+  // Only show navigation if not on auth page
+  const showNavigation = location !== '/auth';
   
   return (
     <div className="h-screen flex flex-col">
-      <AppHeader title="LinguaPortuguese" currentUser={user || undefined} />
-      <div className="flex-grow overflow-auto">
+      {showNavigation && <AppHeader title="LinguaPortuguese" currentUser={user || undefined} />}
+      <div className={cn("flex-grow overflow-auto", !showNavigation && "min-h-screen")}>
         <Router />
       </div>
-      <BottomNavigation />
+      {showNavigation && <BottomNavigation />}
     </div>
   );
 }
