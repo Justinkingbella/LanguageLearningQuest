@@ -10,6 +10,8 @@ import BottomNavigation from "@/components/layout/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
+import { useDebounce } from "@/hooks/useDebounce";
+
 
 interface DictionaryResult {
   id?: number;
@@ -24,20 +26,21 @@ interface DictionaryResult {
 export default function DictionaryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const { data: searchResults = [], isLoading, refetch } = useQuery({
-    queryKey: ['/api/vocabulary/search', searchTerm],
+    queryKey: ['/api/vocabulary/search', debouncedSearchTerm],
     queryFn: async () => {
-      if (!searchTerm || !isSearching) return [] as DictionaryResult[];
-      
+      if (!debouncedSearchTerm || !isSearching) return [] as DictionaryResult[];
+
       try {
-        const url = `/api/vocabulary/search?term=${encodeURIComponent(searchTerm)}`;
+        const url = `/api/vocabulary/search?term=${encodeURIComponent(debouncedSearchTerm)}`;
         const response = await fetch(url);
-        
+
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        
+
         const data = await response.json();
         setIsSearching(false);
         return data as DictionaryResult[];
@@ -47,11 +50,11 @@ export default function DictionaryPage() {
         return [] as DictionaryResult[];
       }
     },
-    enabled: isSearching && !!searchTerm,
+    enabled: isSearching && !!debouncedSearchTerm,
   });
 
   const handleSearch = () => {
-    if (searchTerm.trim()) {
+    if (debouncedSearchTerm.trim()) {
       setIsSearching(true);
       refetch();
     }
@@ -66,10 +69,10 @@ export default function DictionaryPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader title="Portuguese Dictionary" />
-      
+
       <main className="flex-1 container max-w-lg px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">Find Word Meaning & Pronunciation</h1>
-        
+
         <div className="flex gap-2 mb-6">
           <Input 
             type="text" 
@@ -79,7 +82,7 @@ export default function DictionaryPage() {
             onKeyDown={handleKeyDown}
             className="flex-1"
           />
-          <Button onClick={handleSearch} disabled={isLoading || !searchTerm.trim()}>
+          <Button onClick={handleSearch} disabled={isLoading || !debouncedSearchTerm.trim()}>
             {isLoading ? "Searching..." : "Search"}
           </Button>
         </div>
@@ -132,14 +135,14 @@ export default function DictionaryPage() {
               </Card>
             ))}
           </div>
-        ) : searchTerm && !isLoading && isSearching === false ? (
+        ) : debouncedSearchTerm && !isLoading && isSearching === false ? (
           <Card className="p-6 text-center">
             <p className="mb-2">No matching words found.</p>
             <p className="text-sm text-muted-foreground">Try searching for another term or check your spelling.</p>
           </Card>
         ) : null}
 
-        {!searchTerm && !isLoading && (
+        {!debouncedSearchTerm && !isLoading && (
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-3">Dictionary & Pronunciation Guide</h2>
             <p className="mb-4">Enter any Portuguese word or phrase to get:</p>
