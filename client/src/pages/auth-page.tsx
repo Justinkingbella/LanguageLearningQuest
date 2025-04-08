@@ -47,15 +47,17 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
-  // Get current user
+  // Get current user - but don't rerender on every change
   const user = queryClient.getQueryData(["/api/user"]);
   
-  // Use useEffect to handle redirection if user is already logged in
+  // Use useEffect to handle redirection if user is already logged in - only run once
   useEffect(() => {
-    if (user) {
+    // Fetch from cache without causing rerenders
+    const cachedUser = queryClient.getQueryData(["/api/user"]);
+    if (cachedUser) {
       setLocation("/");
     }
-  }, [user, setLocation]);
+  }, [setLocation]); // Only depend on setLocation
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
