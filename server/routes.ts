@@ -369,7 +369,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all conversation scenarios
+  app.get("/api/conversation-scenarios", async (req, res) => {
+    try {
+      // Get all lessons
+      const lessons = await storage.getLessons();
+      
+      // Get scenarios for each lesson
+      const allScenarios = [];
+      for (const lesson of lessons) {
+        const scenarios = await storage.getConversationScenariosByLessonId(lesson.id);
+        allScenarios.push(...scenarios);
+      }
+      
+      return res.json(allScenarios);
+    } catch (error) {
+      console.error('Get all conversation scenarios error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation scenarios" });
+    }
+  });
+  
   // Get a specific conversation scenario
+  app.get("/api/conversation-scenarios/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      const scenario = await storage.getConversationScenario(id);
+      if (!scenario) {
+        return res.status(404).json({ error: "Conversation scenario not found" });
+      }
+      
+      return res.json(scenario);
+    } catch (error) {
+      console.error('Get conversation scenario error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation scenario" });
+    }
+  });
+  
+  // Get a specific conversation scenario (legacy URL)
   app.get("/api/conversations/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -390,6 +430,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get dialogues for a conversation scenario
+  app.get("/api/conversation-scenarios/:id/dialogues", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      const dialogues = await storage.getConversationDialoguesByScenarioId(id);
+      
+      console.log('Raw dialogue data sample:', 
+        dialogues.length > 0 ? {
+          id: dialogues[0].id,
+          hints: dialogues[0].hints,
+          hintsType: typeof dialogues[0].hints,
+          acceptedResponses: dialogues[0].acceptedResponses,
+          acceptedResponsesType: typeof dialogues[0].acceptedResponses
+        } : 'No dialogues found'
+      );
+      
+      // Process dialogue data based on its type
+      const processedDialogues = dialogues.map(dialogue => {
+        let hintsArray = [];
+        let responsesArray = [];
+        
+        // Handle hints based on its type
+        if (Array.isArray(dialogue.hints)) {
+          hintsArray = dialogue.hints;
+        } else if (typeof dialogue.hints === 'string') {
+          try {
+            hintsArray = JSON.parse(dialogue.hints);
+          } catch (e) {
+            console.error('Error parsing hints as JSON:', e);
+            hintsArray = [];
+          }
+        }
+        
+        // Handle acceptedResponses based on its type
+        if (Array.isArray(dialogue.acceptedResponses)) {
+          responsesArray = dialogue.acceptedResponses;
+        } else if (typeof dialogue.acceptedResponses === 'string') {
+          try {
+            responsesArray = JSON.parse(dialogue.acceptedResponses);
+          } catch (e) {
+            console.error('Error parsing acceptedResponses as JSON:', e);
+            responsesArray = [];
+          }
+        }
+        
+        return {
+          ...dialogue,
+          hints: hintsArray,
+          acceptedResponses: responsesArray
+        };
+      });
+      
+      return res.json(processedDialogues);
+    } catch (error) {
+      console.error('Get conversation dialogues error:', error);
+      return res.status(500).json({ error: "Failed to fetch conversation dialogues" });
+    }
+  });
+  
+  // Get dialogues for a conversation scenario (legacy URL)
   app.get("/api/conversations/:id/dialogues", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -399,14 +502,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const dialogues = await storage.getConversationDialoguesByScenarioId(id);
       
-      // Parse JSON fields
-      const parsedDialogues = dialogues.map(dialogue => ({
-        ...dialogue,
-        hints: dialogue.hints ? JSON.parse(dialogue.hints as string) : [],
-        acceptedResponses: dialogue.acceptedResponses ? JSON.parse(dialogue.acceptedResponses as string) : []
-      }));
+      // Process dialogue data based on its type
+      const processedDialogues = dialogues.map(dialogue => {
+        let hintsArray = [];
+        let responsesArray = [];
+        
+        // Handle hints based on its type
+        if (Array.isArray(dialogue.hints)) {
+          hintsArray = dialogue.hints;
+        } else if (typeof dialogue.hints === 'string') {
+          try {
+            hintsArray = JSON.parse(dialogue.hints);
+          } catch (e) {
+            console.error('Error parsing hints as JSON:', e);
+            hintsArray = [];
+          }
+        }
+        
+        // Handle acceptedResponses based on its type
+        if (Array.isArray(dialogue.acceptedResponses)) {
+          responsesArray = dialogue.acceptedResponses;
+        } else if (typeof dialogue.acceptedResponses === 'string') {
+          try {
+            responsesArray = JSON.parse(dialogue.acceptedResponses);
+          } catch (e) {
+            console.error('Error parsing acceptedResponses as JSON:', e);
+            responsesArray = [];
+          }
+        }
+        
+        return {
+          ...dialogue,
+          hints: hintsArray,
+          acceptedResponses: responsesArray
+        };
+      });
       
-      return res.json(parsedDialogues);
+      return res.json(processedDialogues);
     } catch (error) {
       console.error('Get conversation dialogues error:', error);
       return res.status(500).json({ error: "Failed to fetch conversation dialogues" });
@@ -414,6 +546,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Submit conversation practice results
+  app.post("/api/conversation-scenarios/:id/practice", async (req, res) => {
+    try {
+      const scenarioId = parseInt(req.params.id);
+      if (isNaN(scenarioId)) {
+        return res.status(400).json({ error: "Invalid scenario ID" });
+      }
+      
+      // Validate request body
+      const practiceSchema = insertUserConversationPracticeSchema.extend({
+        accuracy: z.number().min(0).max(100),
+      });
+      
+      const validatedData = practiceSchema.parse(req.body);
+      
+      // Check if practice already exists
+      const existingPractice = await storage.getUserConversationPracticeByScenarioId(
+        validatedData.userId, 
+        scenarioId
+      );
+      
+      let practice;
+      
+      if (existingPractice) {
+        // Update existing practice
+        practice = await storage.updateUserConversationPractice(existingPractice.id, {
+          completed: true,
+          accuracy: validatedData.accuracy,
+          completedAt: new Date().toISOString()
+        });
+      } else {
+        // Create new practice
+        practice = await storage.createUserConversationPractice({
+          userId: validatedData.userId,
+          scenarioId,
+          completed: true,
+          accuracy: validatedData.accuracy,
+          completedAt: new Date().toISOString()
+        });
+      }
+      
+      return res.json(practice);
+    } catch (error) {
+      console.error('Submit conversation practice error:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data provided", details: error.errors });
+      }
+      return res.status(500).json({ error: "Failed to save conversation practice" });
+    }
+  });
+  
+  // Submit conversation practice results (legacy URL)
   app.post("/api/conversations/:id/practice", async (req, res) => {
     try {
       const scenarioId = parseInt(req.params.id);
