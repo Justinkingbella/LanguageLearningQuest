@@ -275,6 +275,112 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
+    // Create vocabulary for Ordering Food
+    const foodVocabulary = [
+      {
+        portuguese: "Cardápio",
+        english: "Menu",
+        pronunciation: "kar-DAH-pee-oh",
+        usage: "Ask for the menu at a restaurant"
+      },
+      {
+        portuguese: "Água",
+        english: "Water",
+        pronunciation: "AH-gwa",
+        usage: "Order water at a restaurant"
+      },
+      {
+        portuguese: "Café",
+        english: "Coffee",
+        pronunciation: "kah-FEH",
+        usage: "Order coffee at a café"
+      },
+      {
+        portuguese: "Suco",
+        english: "Juice",
+        pronunciation: "SOO-koh",
+        usage: "Order juice at a restaurant"
+      },
+      {
+        portuguese: "Cerveja",
+        english: "Beer",
+        pronunciation: "ser-VEH-zha",
+        usage: "Order beer at a restaurant or bar"
+      },
+      {
+        portuguese: "Pão",
+        english: "Bread",
+        pronunciation: "powN",
+        usage: "Ask for bread with your meal"
+      },
+      {
+        portuguese: "Carne",
+        english: "Meat",
+        pronunciation: "KAR-nee",
+        usage: "Order meat dishes"
+      },
+      {
+        portuguese: "Frango",
+        english: "Chicken",
+        pronunciation: "FRAHNG-goh",
+        usage: "Order chicken dishes"
+      },
+      {
+        portuguese: "Peixe",
+        english: "Fish",
+        pronunciation: "PAY-shee",
+        usage: "Order fish dishes"
+      },
+      {
+        portuguese: "Arroz",
+        english: "Rice",
+        pronunciation: "ah-HOHS",
+        usage: "Common side dish"
+      },
+      {
+        portuguese: "Feijão",
+        english: "Beans",
+        pronunciation: "fay-ZHOWNG",
+        usage: "Common side dish"
+      },
+      {
+        portuguese: "Sobremesa",
+        english: "Dessert",
+        pronunciation: "so-bree-MEH-za",
+        usage: "Order dessert after main course"
+      },
+      {
+        portuguese: "A conta, por favor",
+        english: "The bill, please",
+        pronunciation: "ah KON-tah por fah-VOR",
+        usage: "Ask for the bill when finished"
+      },
+      {
+        portuguese: "Gostoso",
+        english: "Delicious",
+        pronunciation: "gos-TOH-soh",
+        usage: "Compliment the food"
+      },
+      {
+        portuguese: "Bom apetite",
+        english: "Enjoy your meal",
+        pronunciation: "bohm ah-peh-CHEE-chee",
+        usage: "Wish someone a good meal"
+      }
+    ];
+    
+    for (const vocab of foodVocabulary) {
+      await db.insert(vocabulary).values({
+        lessonId: orderingFood.id,
+        portuguese: vocab.portuguese,
+        english: vocab.english,
+        imageUrl: "",
+        audioUrl: `/api/audio/${vocab.portuguese.toLowerCase().replace(/ /g, '_')}`,
+        pronunciation: vocab.pronunciation,
+        usage: vocab.usage
+      });
+    }
+    
     // Create quiz questions for Basic Greetings
     const greetingsQuizQuestions = [
       {
@@ -327,10 +433,86 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Create user progress
+    // Create quiz questions for Ordering Food
+    const foodQuizQuestions = [
+      {
+        question: "What does 'Cardápio' mean?",
+        correctAnswer: "Menu",
+        explanation: "'Cardápio' is the Portuguese word for a restaurant menu.",
+        options: ["Menu", "Bill", "Waiter", "Plate"]
+      },
+      {
+        question: "What does 'Água' mean?",
+        correctAnswer: "Water",
+        explanation: "'Água' is the Portuguese word for water.",
+        options: ["Water", "Wine", "Coffee", "Juice"]
+      },
+      {
+        question: "What does 'Pão' mean?",
+        correctAnswer: "Bread",
+        explanation: "'Pão' is the Portuguese word for bread.",
+        options: ["Bread", "Rice", "Pasta", "Meat"]
+      },
+      {
+        question: "What does 'A conta, por favor' mean?",
+        correctAnswer: "The bill, please",
+        explanation: "'A conta, por favor' is how you ask for the bill at a restaurant.",
+        options: ["The bill, please", "The menu, please", "More water, please", "A table, please"]
+      },
+      {
+        question: "What does 'Bom apetite' mean?",
+        correctAnswer: "Enjoy your meal",
+        explanation: "'Bom apetite' is what you say to someone before they eat, similar to 'enjoy your meal' or 'bon appétit'.",
+        options: ["Enjoy your meal", "Thank you", "Goodbye", "You're welcome"]
+      }
+    ];
+    
+    for (const q of foodQuizQuestions) {
+      const [question] = await db.insert(quizQuestions).values({
+        lessonId: orderingFood.id,
+        question: q.question,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation
+      }).returning();
+      
+      // Create options for each question
+      for (const opt of q.options) {
+        await db.insert(quizOptions).values({
+          questionId: question.id,
+          option: opt,
+          isCorrect: opt === q.correctAnswer
+        });
+      }
+    }
+    
+    // Create user progress for each lesson
     await db.insert(userProgress).values({
       userId: user.id,
       lessonId: basicGreetings.id,
+      completed: false,
+      score: null,
+      completedAt: null
+    });
+    
+    await db.insert(userProgress).values({
+      userId: user.id,
+      lessonId: orderingFood.id,
+      completed: false,
+      score: null,
+      completedAt: null
+    });
+    
+    await db.insert(userProgress).values({
+      userId: user.id,
+      lessonId: gettingAround.id,
+      completed: false,
+      score: null,
+      completedAt: null
+    });
+    
+    await db.insert(userProgress).values({
+      userId: user.id,
+      lessonId: shopping.id,
       completed: false,
       score: null,
       completedAt: null
