@@ -32,7 +32,7 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   // Set up memory store for sessions
   const MemoryStore = createMemoryStore(session);
-  
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'lingua-portuguese-secret-key', // In production, use proper env var
     resave: false,
@@ -67,7 +67,7 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  
+
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUser(id);
@@ -97,7 +97,7 @@ export function setupAuth(app: Express) {
       // Log in the new user
       req.login(user, (err) => {
         if (err) return next(err);
-        
+
         // Return user without password
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
@@ -113,10 +113,10 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
-      
+
       req.login(user, (err: any) => {
         if (err) return next(err);
-        
+
         // Return user without password
         const { password, ...userWithoutPassword } = user;
         res.status(200).json(userWithoutPassword);
@@ -135,7 +135,7 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     // Return user without password
     const user = req.user as SelectUser;
     const { password, ...userWithoutPassword } = user;

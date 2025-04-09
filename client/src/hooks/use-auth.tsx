@@ -41,17 +41,17 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  
+
   // Query to get current user
   const {
     data: user,
     error,
     isLoading,
   } = useQuery<User | null, Error>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/me"], // Changed query key to fetch from /api/auth/me
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", "/api/user");
+        const res = await apiRequest("GET", "/api/auth/me"); // Changed API endpoint
         return await res.json();
       } catch (error: any) {
         // Return null on 401 Unauthorized, throw error otherwise
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/auth/me"], user); //Updated query key
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.displayName}!`,
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/auth/me"], user); //Updated query key
       toast({
         title: "Registration successful",
         description: `Welcome, ${user.displayName}!`,
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+      queryClient.setQueryData(["/api/auth/me"], null); //Updated query key
       toast({
         title: "Logout successful",
         description: "You have been logged out",

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -49,7 +49,7 @@ export default function AuthPage() {
 
   // Get current user - but don't rerender on every change
   const user = queryClient.getQueryData(["/api/user"]);
-  
+
   // Use useEffect to handle redirection if user is already logged in - only run once
   useEffect(() => {
     // Fetch from cache without causing rerenders
@@ -86,15 +86,15 @@ export default function AuthPage() {
     try {
       const response = await apiRequest("POST", "/api/login", data);
       const userData = await response.json();
-      
+
       // Update cached user data
       queryClient.setQueryData(["/api/user"], userData);
-      
+
       toast({
         title: "Success!",
         description: "You have successfully logged in.",
       });
-      
+
       // Redirect to home page
       setLocation("/");
     } catch (error: any) {
@@ -111,22 +111,22 @@ export default function AuthPage() {
   // Handle registration form submission
   const onRegisterSubmit = useCallback(async (data: RegisterFormValues) => {
     setIsLoading(true);
-    
+
     // Remove confirmPassword since it's not needed in the API call
     const { confirmPassword, ...registerData } = data;
-    
+
     try {
       const response = await apiRequest("POST", "/api/register", registerData);
       const userData = await response.json();
-      
+
       // Update cached user data
       queryClient.setQueryData(["/api/user"], userData);
-      
+
       toast({
         title: "Registration successful!",
         description: "Your account has been created.",
       });
-      
+
       // Redirect to home page
       setLocation("/");
     } catch (error: any) {
@@ -151,7 +151,7 @@ export default function AuthPage() {
           <p className="text-xl mb-6">
             Your journey to fluency starts here with personalized lessons, interactive conversations, and real-time feedback.
           </p>
-          
+
           <div className="space-y-6">
             <div className="flex items-start space-x-3">
               <div className="bg-white bg-opacity-20 p-2 rounded-full">
@@ -164,7 +164,7 @@ export default function AuthPage() {
                 <p>Practice real conversations with context-based scenarios</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="bg-white bg-opacity-20 p-2 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -176,7 +176,7 @@ export default function AuthPage() {
                 <p>Personalized learning path that adapts to your progress</p>
               </div>
             </div>
-            
+
             <div className="flex items-start space-x-3">
               <div className="bg-white bg-opacity-20 p-2 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -191,7 +191,7 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Auth forms section */}
       <div className="lg:w-1/2 p-10 flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
@@ -207,7 +207,7 @@ export default function AuthPage() {
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-              
+
               {/* Login Form */}
               <TabsContent value="login">
                 <Form {...loginForm}>
@@ -225,7 +225,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={loginForm.control}
                       name="password"
@@ -239,13 +239,13 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Signing in..." : "Sign In"}
                     </Button>
                   </form>
                 </Form>
-                
+
                 <div className="mt-4 text-center text-sm">
                   <span className="text-muted-foreground">Don't have an account? </span>
                   <Button variant="link" type="button" onClick={() => setActiveTab("register")} className="p-0">
@@ -253,7 +253,7 @@ export default function AuthPage() {
                   </Button>
                 </div>
               </TabsContent>
-              
+
               {/* Register Form */}
               <TabsContent value="register">
                 <Form {...registerForm}>
@@ -271,7 +271,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={registerForm.control}
                       name="displayName"
@@ -285,7 +285,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={registerForm.control}
                       name="email"
@@ -299,7 +299,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={registerForm.control}
                       name="password"
@@ -313,7 +313,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={registerForm.control}
                       name="confirmPassword"
@@ -327,13 +327,13 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Creating account..." : "Create Account"}
                     </Button>
                   </form>
                 </Form>
-                
+
                 <div className="mt-4 text-center text-sm">
                   <span className="text-muted-foreground">Already have an account? </span>
                   <Button variant="link" type="button" onClick={() => setActiveTab("login")} className="p-0">
