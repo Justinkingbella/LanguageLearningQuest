@@ -63,7 +63,7 @@ async function main() {
       duration: 25,
       order: 6,
       wordCount: 40,
-      status: "locked"
+      status: "available"
     }).returning();
 
     // Intermediate Level Lessons
