@@ -25,13 +25,12 @@ interface DictionaryResult {
 
 export default function DictionaryPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const { data: searchResults = [], isLoading, refetch } = useQuery({
+  const { data: searchResults = [], isLoading } = useQuery({
     queryKey: ['/api/vocabulary/search', debouncedSearchTerm],
     queryFn: async () => {
-      if (!debouncedSearchTerm || !isSearching) return [] as DictionaryResult[];
+      if (!debouncedSearchTerm) return [] as DictionaryResult[];
 
       try {
         const url = `/api/vocabulary/search?term=${encodeURIComponent(debouncedSearchTerm)}`;
@@ -41,16 +40,13 @@ export default function DictionaryPage() {
           throw new Error('Network response was not ok');
         }
 
-        const data = await response.json();
-        setIsSearching(false);
-        return data as DictionaryResult[];
+        return await response.json() as DictionaryResult[];
       } catch (error) {
         console.error('Error fetching search results:', error);
-        setIsSearching(false);
         return [] as DictionaryResult[];
       }
     },
-    enabled: isSearching && !!debouncedSearchTerm,
+    enabled: !!debouncedSearchTerm,
   });
 
   const handleSearch = () => {
