@@ -10,7 +10,7 @@ import BottomNavigation from "@/components/layout/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
-import { useDebounce } from "@/hooks/useDebounce";
+import useDebounce from "@/hooks/useDebounce";
 
 
 interface DictionaryResult {
